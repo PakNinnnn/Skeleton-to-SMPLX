@@ -5,7 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 import trimesh
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Line3DCollection
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
 CONNECTIONS = [
@@ -92,38 +92,26 @@ def set_axes_equal(ax, center, radius):
     ax.set_zlim(center[2] - radius, center[2] + radius)
 
 
-def write_mp4(skeletons, output_mp4, fps):
+def write_mp4(meshes, output_mp4, fps):
     import imageio.v2 as imageio
 
-    all_skeletons = skeletons.reshape(-1, 3)
-    center = all_skeletons.mean(axis=0)
-    radius = np.max(np.linalg.norm(all_skeletons - center, axis=1)) * 0.75
+    all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
+    center = all_vertices.mean(axis=0)
+    radius = np.max(np.linalg.norm(all_vertices - center, axis=1)) * 0.65
 
     with imageio.get_writer(output_mp4, fps=fps) as writer:
-        for idx, skeleton in enumerate(skeletons):
+        for idx, mesh in enumerate(meshes):
             fig = plt.figure(figsize=(8, 8), dpi=150)
             ax = fig.add_subplot(111, projection='3d')
 
-            lines = np.array([
-                [skeleton[start], skeleton[end]]
-                for start, end in CONNECTIONS
-            ])
-            line_collection = Line3DCollection(
-                lines,
-                colors=(0.1, 0.35, 0.9, 0.95),
-                linewidths=2.5,
+            mesh_poly = Poly3DCollection(
+                mesh.vertices[mesh.faces],
+                facecolors=(0.95, 0.58, 0.18, 0.95),
+                edgecolors='none',
             )
-            ax.add_collection3d(line_collection)
-            ax.scatter(
-                skeleton[:, 0],
-                skeleton[:, 1],
-                skeleton[:, 2],
-                c='crimson',
-                s=12,
-                depthshade=False,
-            )
+            ax.add_collection3d(mesh_poly)
 
-            ax.set_title(f'Frame {idx + 1}/{len(skeletons)}')
+            ax.set_title(f'Frame {idx + 1}/{len(meshes)}')
             ax.view_init(elev=15, azim=45)
             set_axes_equal(ax, center, radius)
             ax.set_axis_off()
@@ -214,7 +202,7 @@ def main():
 
     if args.output_mp4:
         write_mp4(
-            skeletons[:num_frames],
+            meshes[:num_frames],
             args.output_mp4,
             args.fps,
         )
