@@ -92,11 +92,12 @@ def set_axes_equal(ax, center, radius):
     ax.set_zlim(center[2] - radius, center[2] + radius)
 
 
-def write_mp4(meshes, output_mp4, fps, elev, azim):
+def write_mp4(meshes, output_mp4, fps, elev, azim, pan):
     import imageio.v2 as imageio
 
     all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
     center = all_vertices.mean(axis=0)
+    center = center + np.asarray(pan, dtype=np.float32)
     radius = np.max(np.linalg.norm(all_vertices - center, axis=1)) * 0.65
 
     with imageio.get_writer(output_mp4, fps=fps) as writer:
@@ -134,6 +135,9 @@ def main():
     parser.add_argument('--fps', type=int, default=12)
     parser.add_argument('--mp4_elev', type=float, default=45.0)
     parser.add_argument('--mp4_azim', type=float, default=45.0)
+    parser.add_argument('--mp4_pan_x', type=float, default=0.0)
+    parser.add_argument('--mp4_pan_y', type=float, default=0.0)
+    parser.add_argument('--mp4_pan_z', type=float, default=0.0)
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
     parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
     parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
@@ -209,6 +213,7 @@ def main():
             args.fps,
             args.mp4_elev,
             args.mp4_azim,
+            [args.mp4_pan_x, args.mp4_pan_y, args.mp4_pan_z],
         )
 
 
