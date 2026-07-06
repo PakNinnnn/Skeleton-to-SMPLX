@@ -5,7 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 import trimesh
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
+from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
 
 CONNECTIONS = [
@@ -92,26 +92,17 @@ def set_axes_equal(ax, center, radius):
     ax.set_zlim(center[2] - radius, center[2] + radius)
 
 
-def write_mp4(skeletons, meshes, output_mp4, fps):
+def write_mp4(skeletons, output_mp4, fps):
     import imageio.v2 as imageio
 
-    all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
     all_skeletons = skeletons.reshape(-1, 3)
-    points = np.concatenate([all_vertices, all_skeletons], axis=0)
-    center = points.mean(axis=0)
-    radius = np.max(np.linalg.norm(points - center, axis=1)) * 0.6
+    center = all_skeletons.mean(axis=0)
+    radius = np.max(np.linalg.norm(all_skeletons - center, axis=1)) * 0.75
 
     with imageio.get_writer(output_mp4, fps=fps) as writer:
-        for idx, (skeleton, mesh) in enumerate(zip(skeletons, meshes)):
+        for idx, skeleton in enumerate(skeletons):
             fig = plt.figure(figsize=(8, 8), dpi=150)
             ax = fig.add_subplot(111, projection='3d')
-
-            mesh_poly = Poly3DCollection(
-                mesh.vertices[mesh.faces],
-                facecolors=(0.95, 0.58, 0.18, 0.42),
-                edgecolors='none',
-            )
-            ax.add_collection3d(mesh_poly)
 
             lines = np.array([
                 [skeleton[start], skeleton[end]]
@@ -132,7 +123,7 @@ def write_mp4(skeletons, meshes, output_mp4, fps):
                 depthshade=False,
             )
 
-            ax.set_title(f'Frame {idx + 1}/{len(meshes)}')
+            ax.set_title(f'Frame {idx + 1}/{len(skeletons)}')
             ax.view_init(elev=15, azim=45)
             set_axes_equal(ax, center, radius)
             ax.set_axis_off()
@@ -224,7 +215,6 @@ def main():
     if args.output_mp4:
         write_mp4(
             skeletons[:num_frames],
-            meshes[:num_frames],
             args.output_mp4,
             args.fps,
         )
