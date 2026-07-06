@@ -246,3 +246,166 @@ class CustomDataset(Dataset):
 
         return self.read_item(keypoints_frame)
     
+
+
+class OwnSkeletonDataset(Dataset):
+    """CSV skeleton format with 21 body joints and one frame per row."""
+
+    NUM_BODY_JOINTS = 21
+
+    JOINT_NAMES = {
+        0: 'pelvis',
+        1: 'R_hip',
+        2: 'R_knee',
+        3: 'R_ankle',
+        4: 'L_hip',
+        5: 'L_knee',
+        6: 'L_ankle',
+        7: 'spine1',
+        8: 'spine2',
+        9: 'spine3',
+        10: 'neck',
+        11: 'head',
+        12: 'head_end',
+        13: 'R_shoulder_inner',
+        14: 'R_shoulder',
+        15: 'R_elbow',
+        16: 'R_wrist',
+        17: 'L_shoulder_inner',
+        18: 'L_shoulder',
+        19: 'L_elbow',
+        20: 'L_wrist',
+    }
+
+    CONNECTIONS = [
+        (0, 1), (1, 2), (2, 3),
+        (0, 4), (4, 5), (5, 6),
+        (0, 7), (7, 8), (8, 9),
+        (9, 10), (10, 11), (11, 12),
+        (10, 13), (13, 14), (14, 15), (15, 16),
+        (10, 17), (17, 18), (18, 19), (19, 20),
+    ]
+
+    def __init__(self, sequence_path,
+                 dtype=torch.float32,
+                 model_type='smplx',
+                 joints_to_ign=None,
+                 skeleton_scale=None,
+                 **kwargs):
+        super(OwnSkeletonDataset, self).__init__()
+
+        self.dtype = dtype
+        self.model_type = model_type
+        self.joints_to_ign = joints_to_ign
+        # The provided CSV appears centimeter-like; SMPL-X is meter-scale.
+        self.skeleton_scale = 0.01 if skeleton_scale is None else skeleton_scale
+
+        self.skeleton_path = self.resolve_skeleton_path(sequence_path)
+        self.sequence_name = os.path.splitext(os.path.basename(self.skeleton_path))[0]
+        self.skeleton_data = self.read_skeleton_sequence(self.skeleton_path)
+        self.cnt = 0
+
+    def resolve_skeleton_path(self, sequence_path):
+        if os.path.isfile(sequence_path):
+            return sequence_path
+
+        csv_files = sorted(
+            item for item in os.listdir(sequence_path)
+            if item.lower().endswith('.csv')
+        )
+        if not csv_files:
+            raise FileNotFoundError(
+                f'No CSV skeleton file found in {sequence_path}'
+            )
+        if len(csv_files) > 1:
+            print(f'Found multiple CSV files in {sequence_path}; using {csv_files[0]}')
+        return os.path.join(sequence_path, csv_files[0])
+
+    def read_skeleton_sequence(self, skeleton_path):
+        raw_data = np.genfromtxt(skeleton_path, delimiter=',', dtype=np.float32)
+        if raw_data.ndim == 1:
+            raw_data = raw_data.reshape(1, -1)
+
+        # If a CSV header is present, genfromtxt returns NaNs for that row.
+        raw_data = raw_data[~np.isnan(raw_data).all(axis=1)]
+
+        expected_cols = 1 + self.NUM_BODY_JOINTS * 3
+        if raw_data.shape[1] != expected_cols:
+            raise ValueError(
+                f'Expected {expected_cols} columns: frame index + '
+                f'{self.NUM_BODY_JOINTS}*3 xyz values. Got {raw_data.shape[1]} '
+                f'in {skeleton_path}.'
+            )
+
+        joints = raw_data[:, 1:].reshape(-1, self.NUM_BODY_JOINTS, 3)
+        joints = joints * self.skeleton_scale
+        print(
+            f'Load {joints.shape[0]} frames from {skeleton_path} '
+            f'with scale {self.skeleton_scale}'
+        )
+        return joints.astype(np.float32)
+
+    def get_model2data(self):
+        if self.model_type != 'smplx':
+            raise ValueError('OwnSkeletonDataset currently supports model_type=smplx')
+
+        # Input order:
+        # pelvis, R hip/knee/ankle, L hip/knee/ankle, spine1/2/3,
+        # neck, head, head_end, R collar/shoulder/elbow/wrist,
+        # L collar/shoulder/elbow/wrist.
+        return np.array([
+            0,   # pelvis
+            2,   # R_hip
+            5,   # R_knee
+            8,   # R_ankle
+            1,   # L_hip
+            4,   # L_knee
+            7,   # L_ankle
+            3,   # spine1
+            6,   # spine2
+            9,   # spine3
+            12,  # neck
+            15,  # head
+            15,  # head_end has no direct SMPL-X joint; ignore or downweight it
+            14,  # R_shoulder_inner / right collar
+            17,  # R_shoulder
+            19,  # R_elbow
+            21,  # R_wrist
+            13,  # L_shoulder_inner / left collar
+            16,  # L_shoulder
+            18,  # L_elbow
+            20,  # L_wrist
+        ], dtype=np.int32)
+
+    def get_joint_weights(self):
+        optim_weights = np.ones(self.NUM_BODY_JOINTS, dtype=np.float32)
+
+        # SMPL-X has a head joint but no separate head-end joint.
+        optim_weights[12] = 0.0
+
+        if self.joints_to_ign is not None and -1 not in self.joints_to_ign:
+            optim_weights[self.joints_to_ign] = 0.0
+        return torch.tensor(optim_weights, dtype=self.dtype)
+
+    def __len__(self):
+        return self.skeleton_data.shape[0]
+
+    def __getitem__(self, idx):
+        return self.read_item(self.skeleton_data[idx])
+
+    def read_item(self, keypoints_frame):
+        return np.expand_dims(keypoints_frame.astype(np.float32), axis=0)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        if self.cnt >= self.skeleton_data.shape[0]:
+            raise StopIteration
+
+        keypoints_frame = self.skeleton_data[self.cnt]
+        self.cnt += 1
+        return self.read_item(keypoints_frame)

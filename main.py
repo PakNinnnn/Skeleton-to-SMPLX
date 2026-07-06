@@ -36,7 +36,7 @@ def main(**args):
     #############################
     if args["gpu_id"] is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = str(args["gpu_id"])
-        print(f"Using GPU: {args["gpu_id"]}")
+        print(f"Using GPU: {args['gpu_id']}")
 
     ##############################
     ###### load floate tyoe ######
@@ -68,6 +68,10 @@ def main(**args):
         from data_parser import CustomDataset
         dataset_obj = CustomDataset(sequence_path=args["data_folder"], **args)
         sequence_name = os.path.basename(args["data_folder"].rstrip('/'))
+    elif args["dataset"] == 'own':
+        from data_parser import OwnSkeletonDataset
+        dataset_obj = OwnSkeletonDataset(sequence_path=args["data_folder"], **args)
+        sequence_name = dataset_obj.sequence_name
     else:
         raise ValueError('Unknown dataset: {}'.format(args["dataset"]))
     
