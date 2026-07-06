@@ -5,3 +5,6 @@ vposer_v1_0/
 adt_smplx.sh
 split_sequence.py
 __pycache__/
+output_folder/
+dependencies/
+*.zip
