@@ -27,14 +27,21 @@ JOINT_LABELS = [
 ]
 
 
-def load_skeleton_csv(path, scale):
+def transform_skeleton(joints, axis_order, axis_signs, scale):
+    axis_order = np.asarray(axis_order, dtype=np.int32)
+    axis_signs = np.asarray(axis_signs, dtype=np.float32)
+    return joints[..., axis_order] * axis_signs.reshape(1, 1, 3) * scale
+
+
+def load_skeleton_csv(path, scale, axis_order, axis_signs):
     raw_data = np.genfromtxt(path, delimiter=',', dtype=np.float32)
     if raw_data.ndim == 1:
         raw_data = raw_data.reshape(1, -1)
     raw_data = raw_data[~np.isnan(raw_data).all(axis=1)]
     if raw_data.shape[1] != 64:
         raise ValueError(f'Expected 64 CSV columns, got {raw_data.shape[1]}')
-    return raw_data[:, 1:].reshape(-1, 21, 3) * scale
+    joints = raw_data[:, 1:].reshape(-1, 21, 3)
+    return transform_skeleton(joints, axis_order, axis_signs, scale)
 
 
 def build_skeleton(joints):
@@ -147,9 +154,16 @@ def main():
     parser.add_argument('--output_mp4', default=None)
     parser.add_argument('--fps', type=int, default=12)
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
+    parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
+    parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
     args = parser.parse_args()
 
-    skeletons = load_skeleton_csv(args.skeleton_csv, args.skeleton_scale)
+    skeletons = load_skeleton_csv(
+        args.skeleton_csv,
+        args.skeleton_scale,
+        args.skeleton_axis_order,
+        args.skeleton_axis_signs,
+    )
     mesh_paths = sorted(
         os.path.join(args.mesh_dir, name)
         for name in os.listdir(args.mesh_dir)

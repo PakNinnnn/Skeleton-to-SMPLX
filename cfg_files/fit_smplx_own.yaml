@@ -36,6 +36,14 @@ maxiters: 30
 interactive: True
 visualize: False
 skeleton_scale: 0.01
+skeleton_axis_order:
+    - 0
+    - 1
+    - 2
+skeleton_axis_signs:
+    - -1.0
+    - 1.0
+    - 1.0
 debug_joint_mapping: True
 joints_to_ign:
     - 12

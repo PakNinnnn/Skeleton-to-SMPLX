@@ -70,6 +70,12 @@ def parse_config(argv=None):
                         help='The name of the dataset that will be used')
     parser.add_argument('--skeleton_scale', default=None, type=float,
                         help='Scale factor applied to input skeleton coordinates')
+    parser.add_argument('--skeleton_axis_order', default=[0, 1, 2],
+                        nargs='*', type=int,
+                        help='Axis order applied to skeleton xyz coordinates')
+    parser.add_argument('--skeleton_axis_signs', default=[1.0, 1.0, 1.0],
+                        nargs='*', type=float,
+                        help='Axis signs applied after skeleton_axis_order')
     parser.add_argument('--debug_joint_mapping',
                         default=False,
                         type=lambda x: x.lower() in ['true', '1'],

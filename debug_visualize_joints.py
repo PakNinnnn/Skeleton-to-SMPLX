@@ -61,14 +61,21 @@ CUSTOM_TO_SMPLX = [
 ]
 
 
-def load_custom_skeleton_csv(path, scale):
+def transform_skeleton(joints, axis_order, axis_signs, scale):
+    axis_order = np.asarray(axis_order, dtype=np.int32)
+    axis_signs = np.asarray(axis_signs, dtype=np.float32)
+    return joints[..., axis_order] * axis_signs.reshape(1, 1, 3) * scale
+
+
+def load_custom_skeleton_csv(path, scale, axis_order, axis_signs):
     raw_data = np.genfromtxt(path, delimiter=',', dtype=np.float32)
     if raw_data.ndim == 1:
         raw_data = raw_data.reshape(1, -1)
     raw_data = raw_data[~np.isnan(raw_data).all(axis=1)]
     if raw_data.shape[1] != 64:
         raise ValueError(f'Expected 64 CSV columns, got {raw_data.shape[1]}')
-    return raw_data[:, 1:].reshape(-1, 21, 3) * scale
+    joints = raw_data[:, 1:].reshape(-1, 21, 3)
+    return transform_skeleton(joints, axis_order, axis_signs, scale)
 
 
 def joint_label(index, name, extra=None):
@@ -187,7 +194,12 @@ def write_smplx_debug(args):
 
 
 def write_custom_debug(args):
-    skeletons = load_custom_skeleton_csv(args.skeleton_csv, args.skeleton_scale)
+    skeletons = load_custom_skeleton_csv(
+        args.skeleton_csv,
+        args.skeleton_scale,
+        args.skeleton_axis_order,
+        args.skeleton_axis_signs,
+    )
     if args.frame_idx < 0 or args.frame_idx >= len(skeletons):
         raise ValueError(f'frame_idx must be in [0, {len(skeletons) - 1}]')
 
@@ -210,6 +222,8 @@ def main():
     parser.add_argument('--gender', default='neutral', choices=['neutral', 'male', 'female'])
     parser.add_argument('--frame_idx', type=int, default=0)
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
+    parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
+    parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
     parser.add_argument('--smplx_output', default='debug_smplx_joint_numbers.html')
     parser.add_argument('--custom_output', default='debug_custom_joint_numbers.html')
     parser.add_argument('--smplx_joint_limit', type=int, default=22)

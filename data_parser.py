@@ -340,6 +340,8 @@ class OwnSkeletonDataset(Dataset):
                  model_type='smplx',
                  joints_to_ign=None,
                  skeleton_scale=None,
+                 skeleton_axis_order=None,
+                 skeleton_axis_signs=None,
                  debug_joint_mapping=False,
                  **kwargs):
         super(OwnSkeletonDataset, self).__init__()
@@ -349,6 +351,8 @@ class OwnSkeletonDataset(Dataset):
         self.joints_to_ign = joints_to_ign
         # The provided CSV appears centimeter-like; SMPL-X is meter-scale.
         self.skeleton_scale = 0.01 if skeleton_scale is None else skeleton_scale
+        self.skeleton_axis_order = self.validate_axis_order(skeleton_axis_order)
+        self.skeleton_axis_signs = self.validate_axis_signs(skeleton_axis_signs)
 
         self.skeleton_path = self.resolve_skeleton_path(sequence_path)
         self.sequence_name = os.path.splitext(os.path.basename(self.skeleton_path))[0]
@@ -356,6 +360,7 @@ class OwnSkeletonDataset(Dataset):
         self.cnt = 0
         if debug_joint_mapping:
             self.print_joint_mapping()
+            self.print_coordinate_diagnostics()
 
     def resolve_skeleton_path(self, sequence_path):
         if os.path.isfile(sequence_path):
@@ -390,12 +395,39 @@ class OwnSkeletonDataset(Dataset):
             )
 
         joints = raw_data[:, 1:].reshape(-1, self.NUM_BODY_JOINTS, 3)
-        joints = joints * self.skeleton_scale
+        joints = self.transform_skeleton(joints)
         print(
             f'Load {joints.shape[0]} frames from {skeleton_path} '
-            f'with scale {self.skeleton_scale}'
+            f'with scale {self.skeleton_scale}, '
+            f'axis_order {self.skeleton_axis_order.tolist()}, '
+            f'axis_signs {self.skeleton_axis_signs.tolist()}'
         )
         return joints.astype(np.float32)
+
+    def validate_axis_order(self, skeleton_axis_order):
+        axis_order = [0, 1, 2] if skeleton_axis_order is None else skeleton_axis_order
+        axis_order = np.asarray(axis_order, dtype=np.int32)
+        if axis_order.shape != (3,) or sorted(axis_order.tolist()) != [0, 1, 2]:
+            raise ValueError(
+                f'skeleton_axis_order must contain the axes 0, 1, 2 once. '
+                f'Got {axis_order.tolist()}.'
+            )
+        return axis_order
+
+    def validate_axis_signs(self, skeleton_axis_signs):
+        axis_signs = [1.0, 1.0, 1.0] if skeleton_axis_signs is None else skeleton_axis_signs
+        axis_signs = np.asarray(axis_signs, dtype=np.float32)
+        if axis_signs.shape != (3,):
+            raise ValueError(
+                f'skeleton_axis_signs must contain 3 values. '
+                f'Got {axis_signs.tolist()}.'
+            )
+        return axis_signs
+
+    def transform_skeleton(self, joints):
+        joints = joints[..., self.skeleton_axis_order]
+        joints = joints * self.skeleton_axis_signs.reshape(1, 1, 3)
+        return joints * self.skeleton_scale
 
     def get_model2data(self):
         if self.model_type != 'smplx':
@@ -436,6 +468,20 @@ class OwnSkeletonDataset(Dataset):
                 f'{input_idx:>9} {input_name:<20} '
                 f'{smplx_idx:>9} {smplx_name:<16} {weights[input_idx]:.1f}'
             )
+
+    def print_coordinate_diagnostics(self):
+        frame = self.skeleton_data[0]
+        right_hip_x = frame[1, 0]
+        left_hip_x = frame[4, 0]
+        right_shoulder_x = frame[14, 0]
+        left_shoulder_x = frame[18, 0]
+        print('Own skeleton coordinate diagnostics after transform, frame 0')
+        print(f'R_hip.x - L_hip.x = {right_hip_x - left_hip_x:.4f}')
+        print(f'R_shoulder.x - L_shoulder.x = {right_shoulder_x - left_shoulder_x:.4f}')
+        print(
+            'Expected for SMPL-X-like handedness: right-side X is usually '
+            'smaller than left-side X.'
+        )
 
     def __len__(self):
         return self.skeleton_data.shape[0]
