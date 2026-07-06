@@ -133,7 +133,7 @@ def main():
     parser.add_argument('--output_mp4', default=None)
     parser.add_argument('--fps', type=int, default=12)
     parser.add_argument('--mp4_elev', type=float, default=45.0)
-    parser.add_argument('--mp4_azim', type=float, default=-45.0)
+    parser.add_argument('--mp4_azim', type=float, default=45.0)
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
     parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
     parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
