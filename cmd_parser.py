@@ -70,6 +70,10 @@ def parse_config(argv=None):
                         help='The name of the dataset that will be used')
     parser.add_argument('--skeleton_scale', default=None, type=float,
                         help='Scale factor applied to input skeleton coordinates')
+    parser.add_argument('--debug_joint_mapping',
+                        default=False,
+                        type=lambda x: x.lower() in ['true', '1'],
+                        help='Print the input-skeleton to SMPL-X joint mapping')
     parser.add_argument('--joints_to_ign', default=-1, type=int,
                         nargs='*',
                         help='Indices of joints to be ignored')

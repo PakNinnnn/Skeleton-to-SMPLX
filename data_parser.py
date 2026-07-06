@@ -253,6 +253,55 @@ class OwnSkeletonDataset(Dataset):
 
     NUM_BODY_JOINTS = 21
 
+    SMPLX_BODY_JOINT_NAMES = [
+        'pelvis',
+        'left_hip',
+        'right_hip',
+        'spine1',
+        'left_knee',
+        'right_knee',
+        'spine2',
+        'left_ankle',
+        'right_ankle',
+        'spine3',
+        'left_foot',
+        'right_foot',
+        'neck',
+        'left_collar',
+        'right_collar',
+        'head',
+        'left_shoulder',
+        'right_shoulder',
+        'left_elbow',
+        'right_elbow',
+        'left_wrist',
+        'right_wrist',
+    ]
+
+    INPUT_TO_SMPLX = np.array([
+        0,   # pelvis
+        2,   # R_hip
+        5,   # R_knee
+        8,   # R_ankle
+        1,   # L_hip
+        4,   # L_knee
+        7,   # L_ankle
+        3,   # spine1
+        6,   # spine2
+        9,   # spine3
+        12,  # neck
+        15,  # head
+        15,  # head_end has no direct SMPL-X joint; ignored by default
+        14,  # R_shoulder_inner / right collar
+        17,  # R_shoulder
+        19,  # R_elbow
+        21,  # R_wrist
+        13,  # L_shoulder_inner / left collar
+        16,  # L_shoulder
+        18,  # L_elbow
+        20,  # L_wrist
+    ], dtype=np.int32)
+
     JOINT_NAMES = {
         0: 'pelvis',
         1: 'R_hip',
@@ -291,6 +340,7 @@ class OwnSkeletonDataset(Dataset):
                  model_type='smplx',
                  joints_to_ign=None,
                  skeleton_scale=None,
+                 debug_joint_mapping=False,
                  **kwargs):
         super(OwnSkeletonDataset, self).__init__()
 
@@ -304,6 +354,8 @@ class OwnSkeletonDataset(Dataset):
         self.sequence_name = os.path.splitext(os.path.basename(self.skeleton_path))[0]
         self.skeleton_data = self.read_skeleton_sequence(self.skeleton_path)
         self.cnt = 0
+        if debug_joint_mapping:
+            self.print_joint_mapping()
 
     def resolve_skeleton_path(self, sequence_path):
         if os.path.isfile(sequence_path):
@@ -349,33 +401,13 @@ class OwnSkeletonDataset(Dataset):
         if self.model_type != 'smplx':
             raise ValueError('OwnSkeletonDataset currently supports model_type=smplx')
 
-        # Input order:
-        # pelvis, R hip/knee/ankle, L hip/knee/ankle, spine1/2/3,
-        # neck, head, head_end, R collar/shoulder/elbow/wrist,
-        # L collar/shoulder/elbow/wrist.
-        return np.array([
-            0,   # pelvis
-            2,   # R_hip
-            5,   # R_knee
-            8,   # R_ankle
-            1,   # L_hip
-            4,   # L_knee
-            7,   # L_ankle
-            3,   # spine1
-            6,   # spine2
-            9,   # spine3
-            12,  # neck
-            15,  # head
-            15,  # head_end has no direct SMPL-X joint; ignore or downweight it
-            14,  # R_shoulder_inner / right collar
-            17,  # R_shoulder
-            19,  # R_elbow
-            21,  # R_wrist
-            13,  # L_shoulder_inner / left collar
-            16,  # L_shoulder
-            18,  # L_elbow
-            20,  # L_wrist
-        ], dtype=np.int32)
+        return self.INPUT_TO_SMPLX.copy()
+
+    def get_ignored_joints(self):
+        if self.joints_to_ign is None:
+            return np.array([], dtype=np.int32)
+        ignored = np.atleast_1d(self.joints_to_ign).astype(np.int32)
+        return ignored[ignored != -1]
 
     def get_joint_weights(self):
         optim_weights = np.ones(self.NUM_BODY_JOINTS, dtype=np.float32)
@@ -383,9 +415,27 @@ class OwnSkeletonDataset(Dataset):
         # SMPL-X has a head joint but no separate head-end joint.
         optim_weights[12] = 0.0
 
-        if self.joints_to_ign is not None and -1 not in self.joints_to_ign:
-            optim_weights[self.joints_to_ign] = 0.0
+        ignored = self.get_ignored_joints()
+        if ignored.size > 0:
+            optim_weights[ignored] = 0.0
         return torch.tensor(optim_weights, dtype=self.dtype)
+
+    def print_joint_mapping(self):
+        weights = np.ones(self.NUM_BODY_JOINTS, dtype=np.float32)
+        weights[12] = 0.0
+        ignored = self.get_ignored_joints()
+        if ignored.size > 0:
+            weights[ignored] = 0.0
+
+        print('Own skeleton -> SMPL-X joint mapping')
+        print('input_idx input_name           smplx_idx smplx_name       weight')
+        for input_idx, smplx_idx in enumerate(self.INPUT_TO_SMPLX):
+            input_name = self.JOINT_NAMES[input_idx]
+            smplx_name = self.SMPLX_BODY_JOINT_NAMES[smplx_idx]
+            print(
+                f'{input_idx:>9} {input_name:<20} '
+                f'{smplx_idx:>9} {smplx_name:<16} {weights[input_idx]:.1f}'
+            )
 
     def __len__(self):
         return self.skeleton_data.shape[0]

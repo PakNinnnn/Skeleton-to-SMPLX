@@ -36,6 +36,7 @@ maxiters: 30
 interactive: True
 visualize: False
 skeleton_scale: 0.01
+debug_joint_mapping: True
 joints_to_ign:
     - 12
 data_weights:
