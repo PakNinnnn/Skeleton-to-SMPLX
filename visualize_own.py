@@ -92,22 +92,42 @@ def set_axes_equal(ax, center, radius):
     ax.set_zlim(center[2] - radius, center[2] + radius)
 
 
-def write_mp4(meshes, output_mp4, fps, elev, azim, roll):
+def shaded_face_colors(mesh, light_dir):
+    light_dir = np.asarray(light_dir, dtype=np.float32)
+    light_dir = light_dir / max(np.linalg.norm(light_dir), 1e-8)
+    normals = mesh.face_normals
+    intensity = np.clip(normals @ light_dir, 0.0, 1.0)
+    intensity = 0.35 + 0.65 * intensity
+    base_color = np.array([0.95, 0.58, 0.18, 1.0])
+    colors = np.ones((len(mesh.faces), 4), dtype=np.float32)
+    colors[:, :3] = base_color[:3] * intensity[:, None]
+    colors[:, 3] = base_color[3]
+    return colors
+
+
+def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges):
     import imageio.v2 as imageio
 
     all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
     center = all_vertices.mean(axis=0)
-    radius = np.max(np.linalg.norm(all_vertices - center, axis=1)) * 0.65
+    radius = np.max(np.linalg.norm(all_vertices - center, axis=1)) * 0.7
+    light_dir = [-0.35, -0.45, 0.82]
 
     with imageio.get_writer(output_mp4, fps=fps) as writer:
         for idx, mesh in enumerate(meshes):
             fig = plt.figure(figsize=(8, 8), dpi=150)
             ax = fig.add_subplot(111, projection='3d')
+            try:
+                ax.set_proj_type('persp', focal_length=0.85)
+            except TypeError:
+                ax.set_proj_type('persp')
 
             mesh_poly = Poly3DCollection(
                 mesh.vertices[mesh.faces],
-                facecolors=(0.95, 0.58, 0.18, 0.95),
-                edgecolors='none',
+                facecolors=shaded_face_colors(mesh, light_dir),
+                edgecolors=(0.18, 0.12, 0.08, 0.12) if show_edges else 'none',
+                linewidths=0.08 if show_edges else 0.0,
+                antialiaseds=True,
             )
             ax.add_collection3d(mesh_poly)
 
@@ -117,6 +137,7 @@ def write_mp4(meshes, output_mp4, fps, elev, azim, roll):
             except TypeError:
                 ax.view_init(elev=elev, azim=azim)
             set_axes_equal(ax, center, radius)
+            ax.set_facecolor('white')
             ax.set_axis_off()
             fig.tight_layout(pad=0)
 
@@ -138,6 +159,7 @@ def main():
     parser.add_argument('--mp4_elev', type=float, default=100.0)
     parser.add_argument('--mp4_azim', type=float, default=-90.0)
     parser.add_argument('--mp4_roll', type=float, default=0.0)
+    parser.add_argument('--mp4_show_edges', action='store_true')
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
     parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
     parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
@@ -214,6 +236,7 @@ def main():
             args.mp4_elev,
             args.mp4_azim,
             args.mp4_roll,
+            args.mp4_show_edges,
         )
 
 
