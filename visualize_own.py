@@ -105,7 +105,7 @@ def shaded_face_colors(mesh, light_dir):
     return colors
 
 
-def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges):
+def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw):
     import imageio.v2 as imageio
 
     all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
@@ -143,7 +143,10 @@ def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges):
 
             fig.canvas.draw()
             rgba = np.asarray(fig.canvas.buffer_rgba())
-            writer.append_data(rgba[:, :, :3])
+            frame = rgba[:, :, :3]
+            if rotate_ccw:
+                frame = np.rot90(frame)
+            writer.append_data(frame)
             plt.close(fig)
 
     print(f'Wrote {output_mp4}')
@@ -160,6 +163,7 @@ def main():
     parser.add_argument('--mp4_azim', type=float, default=-90.0)
     parser.add_argument('--mp4_roll', type=float, default=0.0)
     parser.add_argument('--mp4_show_edges', action='store_true')
+    parser.add_argument('--mp4_rotate_ccw', action='store_true')
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
     parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
     parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
@@ -237,6 +241,7 @@ def main():
             args.mp4_azim,
             args.mp4_roll,
             args.mp4_show_edges,
+            args.mp4_rotate_ccw,
         )
 
 
