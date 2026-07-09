@@ -105,12 +105,12 @@ def shaded_face_colors(mesh, light_dir):
     return colors
 
 
-def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw):
+def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw, zoom):
     import imageio.v2 as imageio
 
     all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
     center = all_vertices.mean(axis=0)
-    radius = np.max(np.linalg.norm(all_vertices - center, axis=1)) * 0.7
+    radius = np.max(np.linalg.norm(all_vertices - center, axis=1)) * 0.7 / zoom
     light_dir = [-0.35, -0.45, 0.82]
 
     with imageio.get_writer(output_mp4, fps=fps) as writer:
@@ -164,6 +164,7 @@ def main():
     parser.add_argument('--mp4_roll', type=float, default=0.0)
     parser.add_argument('--mp4_show_edges', action='store_true')
     parser.add_argument('--mp4_rotate_ccw', action='store_true')
+    parser.add_argument('--mp4_zoom', type=float, default=1.25)
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
     parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
     parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
@@ -242,6 +243,7 @@ def main():
             args.mp4_roll,
             args.mp4_show_edges,
             args.mp4_rotate_ccw,
+            args.mp4_zoom,
         )
 
 
