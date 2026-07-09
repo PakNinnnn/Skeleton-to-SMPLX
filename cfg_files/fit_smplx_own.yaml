@@ -1,5 +1,5 @@
 dataset: 'own'
-data_folder: "own_skeletons/_sub11_pro_processed_334.csv"
+data_folder: "own_skeletons"
 output_folder: "output_folder"
 prior_folder: 'priors'
 model_folder: 'models'
@@ -44,7 +44,7 @@ skeleton_axis_signs:
     - -1.0
     - 1.0
     - 1.0
-debug_joint_mapping: True
+debug_joint_mapping: False
 joints_to_ign:
     - 12
 data_weights:
