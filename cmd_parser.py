@@ -184,6 +184,9 @@ def parse_config(argv=None):
     parser.add_argument('--use_vposer', default=True,
                         type=lambda arg: arg.lower() in ['true', '1'],
                         help='Use the VAE pose embedding')
+    parser.add_argument('--use_prev_frame_init', default=True,
+                        type=lambda arg: arg.lower() in ['true', '1'],
+                        help='Initialize each frame from the previous frame fit')
     parser.add_argument('--vposer_ckpt', type=str, default='vposer_v1_0',
                         help='The path to the V-Poser checkpoint')
     # Left/Right shoulder and hips

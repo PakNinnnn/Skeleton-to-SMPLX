@@ -32,7 +32,7 @@ optim_type: 'lbfgsls'
 ftol: 1e-9
 gtol: 1e-9
 lr: 1.0
-maxiters: 30
+maxiters: 10
 interactive: True
 visualize: False
 skeleton_scale: 0.01
@@ -51,14 +51,14 @@ data_weights:
     - 50
     - 50
     - 50
-    - 50
-    - 50
+    # - 50
+    # - 50
 body_pose_prior_weights:
-    - 4.04e1
+    # - 4.04e1
     - 4.04e1
     - 57.4e-1
     - 4.78e-1
-    - 4.78e-1
+    # - 4.78e-1
 coll_loss_weights:
     - 0.0
     - 0.0
@@ -67,9 +67,9 @@ coll_loss_weights:
     - 1.0
 shape_weights:
     - 1.0e2
-    - 5.0e1
+    # - 5.0e1
     - 1.0e1
-    - 0.5e1
+    # - 0.5e1
     - 0.5e1
 expr_weights:
     - 1.0e2
@@ -102,4 +102,5 @@ face_joints_weights:
     - 0.0
     - 2.0
 use_vposer: True
+use_prev_frame_init: True
 vposer_ckpt: "vposer_v1_0"

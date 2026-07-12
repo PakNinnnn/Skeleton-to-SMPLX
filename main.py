@@ -152,6 +152,15 @@ def main(**args):
             right_hand_prior = right_hand_prior.to(device=device)
     else:
         device = torch.device('cpu')
+
+    shared_vposer = None
+    if args["use_vposer"]:
+        from human_body_prior.tools.model_loader import load_vposer
+        vposer_ckpt = os.path.expandvars(args["vposer_ckpt"])
+        shared_vposer, _ = load_vposer(vposer_ckpt, vp_model='snapshot')
+        shared_vposer = shared_vposer.to(device=device)
+        shared_vposer.eval()
+
     # A weight for every joint of the model
     joint_weights = dataset_obj.get_joint_weights().to(device=device, dtype=dtype)
     # Add a fake batch dimension for broadcasting
@@ -194,6 +203,7 @@ def main(**args):
     ###### fit sequence and store ######
     ####################################
     global_betas = None
+    prev_pose_embedding = None
     if not os.path.exists(os.path.join(args['output_folder'], sequence_name, 'meshes')):
         os.makedirs(os.path.join(args['output_folder'], sequence_name, 'meshes'))
     smplx_stored_path = os.path.join(args['output_folder'], sequence_name, 'body_smplx.json')
@@ -203,10 +213,12 @@ def main(**args):
         for idx, data in enumerate(dataset_obj):
             try:
                 print('Fitting frame {}/{} ...'.format(idx+1, len(dataset_obj)))
-                global_betas, body_dict, body_mesh = fit_single_frame(
+                global_betas, prev_pose_embedding, body_dict, body_mesh = fit_single_frame(
                                 data,
                                 frame_idx=idx,
                                 global_betas=global_betas,
+                                prev_pose_embedding=prev_pose_embedding,
+                                vposer=shared_vposer,
                                 search_tree=search_tree,
                                 pen_distance=pen_distance,
                                 filter_faces=filter_faces,

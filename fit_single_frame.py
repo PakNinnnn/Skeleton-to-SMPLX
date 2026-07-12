@@ -42,6 +42,8 @@ def fit_single_frame(
                     keypoints,
                     frame_idx,
                     global_betas,
+                    prev_pose_embedding,
+                    vposer,
                     search_tree,
                     pen_distance,
                     filter_faces,
@@ -85,15 +87,16 @@ def fit_single_frame(
     ###### Prepare the VPoser ######
     ################################
     use_vposer = kwargs["use_vposer"]  # default: True
-    vposer, pose_embedding = [None, ] * 2
+    pose_embedding = None
     if use_vposer:
         pose_embedding = torch.zeros([batch_size, 32],
                                      dtype=dtype, device=device,
                                      requires_grad=True)
-        vposer_ckpt = osp.expandvars(kwargs["vposer_ckpt"])
-        vposer, _ = load_vposer(vposer_ckpt, vp_model='snapshot')
-        vposer = vposer.to(device=device)
-        vposer.eval()
+        if vposer is None:
+            vposer_ckpt = osp.expandvars(kwargs["vposer_ckpt"])
+            vposer, _ = load_vposer(vposer_ckpt, vp_model='snapshot')
+            vposer = vposer.to(device=device)
+            vposer.eval()
         body_mean_pose = torch.zeros([batch_size, vposer_latent_dim],
                                      dtype=dtype)
     else:
@@ -154,16 +157,24 @@ def fit_single_frame(
     ###### Fitting Process ######
     #############################
     with fitting.FittingMonitor(**kwargs) as monitor:
+        use_prev_frame_init = kwargs.get("use_prev_frame_init", True)
         if frame_idx == 0 and global_betas == None:
             new_params = defaultdict(body_pose=body_mean_pose)
             body_model.reset_params(**new_params)
+        elif use_prev_frame_init:
+            with torch.no_grad():
+                body_model.betas.copy_(global_betas)
+            body_model.betas.requires_grad = False
         else: # fix shape parameters after first frame
             new_params = defaultdict(betas=global_betas, body_pose=body_mean_pose)
             body_model.reset_params(**new_params)
             body_model.betas.requires_grad = False
         if use_vposer:
             with torch.no_grad():
-                pose_embedding.fill_(0)
+                if use_prev_frame_init and prev_pose_embedding is not None:
+                    pose_embedding.copy_(prev_pose_embedding)
+                else:
+                    pose_embedding.fill_(0)
 
         # five stages of optimization
         for opt_idx, curr_weights in enumerate(tqdm(opt_weights, desc='Stage')):
@@ -223,5 +234,11 @@ def fit_single_frame(
                 "global_orient": body_model.global_orient.detach().cpu().numpy().tolist()[0],
                 "transl": body_model.transl.detach().cpu().numpy().tolist()[0]}
     
-    return body_model.betas.data.clone(), body_dict, out_mesh
+    curr_pose_embedding = (
+        pose_embedding.detach().clone()
+        if use_vposer and pose_embedding is not None
+        else None
+    )
+
+    return body_model.betas.data.clone(), curr_pose_embedding, body_dict, out_mesh
     
