@@ -1,7 +1,7 @@
 #!/bin/bash
 
 python main.py \
-    --config cfg_files/fit_smplx.yaml \
-    --data_folder samples/sequence1 \
+    --config cfg_files/fit_smplx_own.yaml \
+    --data_folder /home/marcolee/files/badminton/tsad/EDA/processed_skeleton/sub1/_sub01_beginner_processed_290.csv \
     --output_folder output_folder \
-    --dataset custom 
+    --dataset own 

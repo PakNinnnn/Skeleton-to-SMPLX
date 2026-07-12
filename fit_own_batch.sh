@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CONFIG="${1:-cfg_files/fit_smplx_own.yaml}"
-INPUT_DIR="${2:-own_skeletons}"
+INPUT_DIR="${2:-/home/marcolee/files/badminton/tsad/badminton_pro_keleton/test}"
 OUTPUT_DIR="${3:-output_folder}"
 
 if [[ ! -f "$CONFIG" ]]; then

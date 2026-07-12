@@ -162,9 +162,9 @@ def main():
     parser.add_argument('--mesh_dir', required=True)
     parser.add_argument('--frame_idx', type=int, default=0)
     parser.add_argument('--output_html', default='mp4_view_tuner.html')
-    parser.add_argument('--initial_elev', type=float, default=45.0)
-    parser.add_argument('--initial_azim', type=float, default=45.0)
-    parser.add_argument('--camera_radius', type=float, default=1.8)
+    parser.add_argument('--initial_elev', type=float, default=45.034)
+    parser.add_argument('--initial_azim', type=float, default=149.404)
+    parser.add_argument('--camera_radius', type=float, default=142.930)
     args = parser.parse_args()
 
     mesh_path = choose_mesh_path(args.mesh_dir, args.frame_idx)
