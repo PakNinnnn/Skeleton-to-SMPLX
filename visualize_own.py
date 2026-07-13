@@ -113,21 +113,36 @@ def add_frame_label(frame, label):
 
     image = Image.fromarray(frame)
     draw = ImageDraw.Draw(image)
-    font = ImageFont.load_default()
+    font_size = max(48, image.width // 18)
+    font_candidates = [
+        '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+        '/Library/Fonts/Arial Bold.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    ]
+    font = None
+    for font_path in font_candidates:
+        if os.path.exists(font_path):
+            font = ImageFont.truetype(font_path, font_size)
+            break
+    if font is None:
+        font = ImageFont.load_default()
+
     title = label.upper()
+    fill_color = (30, 150, 70) if label == 'expert' else (210, 45, 45)
     bbox = draw.textbbox((0, 0), title, font=font)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
-    pad_x = 16
-    pad_y = 10
+    pad_x = max(24, image.width // 45)
+    pad_y = max(14, image.height // 70)
     x = (image.width - text_w) // 2
-    y = 18
+    y = max(22, image.height // 35)
     draw.rectangle(
         [x - pad_x, y - pad_y, x + text_w + pad_x, y + text_h + pad_y],
         fill=(255, 255, 255),
-        outline=(30, 30, 30),
+        outline=fill_color,
+        width=max(3, image.width // 300),
     )
-    draw.text((x, y), title, fill=(20, 20, 20), font=font)
+    draw.text((x, y), title, fill=fill_color, font=font)
     return np.asarray(image)
 
 
