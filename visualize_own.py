@@ -105,7 +105,33 @@ def shaded_face_colors(mesh, light_dir):
     return colors
 
 
-def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw, zoom):
+def add_frame_label(frame, label):
+    if label is None:
+        return frame
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    image = Image.fromarray(frame)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default()
+    title = label.upper()
+    bbox = draw.textbbox((0, 0), title, font=font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+    pad_x = 16
+    pad_y = 10
+    x = (image.width - text_w) // 2
+    y = 18
+    draw.rectangle(
+        [x - pad_x, y - pad_y, x + text_w + pad_x, y + text_h + pad_y],
+        fill=(255, 255, 255),
+        outline=(30, 30, 30),
+    )
+    draw.text((x, y), title, fill=(20, 20, 20), font=font)
+    return np.asarray(image)
+
+
+def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw, zoom, label):
     import imageio.v2 as imageio
 
     all_vertices = np.concatenate([mesh.vertices for mesh in meshes], axis=0)
@@ -146,6 +172,7 @@ def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw,
             frame = rgba[:, :, :3]
             if rotate_ccw:
                 frame = np.rot90(frame)
+            frame = add_frame_label(frame, label)
             writer.append_data(frame)
             plt.close(fig)
 
@@ -184,6 +211,7 @@ def main():
     parser.add_argument('--mp4_show_edges', action='store_true')
     parser.add_argument('--mp4_rotate_ccw', action='store_true')
     parser.add_argument('--mp4_zoom', type=float, default=1.25)
+    parser.add_argument('--mp4_label', choices=['expert', 'player'], default=None)
     parser.add_argument('--skeleton_scale', type=float, default=0.01)
     parser.add_argument('--skeleton_axis_order', nargs=3, type=int, default=[0, 1, 2])
     parser.add_argument('--skeleton_axis_signs', nargs=3, type=float, default=[-1.0, 1.0, 1.0])
@@ -272,6 +300,7 @@ def main():
             args.mp4_show_edges,
             args.mp4_rotate_ccw,
             args.mp4_zoom,
+            args.mp4_label,
         )
 
 
