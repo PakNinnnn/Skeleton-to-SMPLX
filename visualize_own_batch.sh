@@ -33,6 +33,11 @@ if [[ ${#sample_dirs[@]} -eq 0 ]]; then
     exit 1
 fi
 
+frame_range_requested=false
+if [[ $# -ge 3 ]]; then
+    frame_range_requested=true
+fi
+
 echo "Scanning ${#sample_dirs[@]} item(s) under $OUTPUT_DIR"
 echo "Matching CSV files from: $CSV_DIR"
 
@@ -69,7 +74,7 @@ for sample_dir in "${sample_dirs[@]}"; do
         continue
     fi
 
-    if [[ -f "$output_mp4" && "$OVERWRITE" != "true" ]]; then
+    if [[ -f "$output_mp4" && "$OVERWRITE" != "true" && "$frame_range_requested" != "true" ]]; then
         echo "Skipping $sample_name: $output_mp4 already exists"
         skipped=$((skipped + 1))
         continue
