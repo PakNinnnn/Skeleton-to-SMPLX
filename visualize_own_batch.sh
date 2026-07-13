@@ -3,6 +3,8 @@ set -euo pipefail
 
 OUTPUT_DIR="${1:-output_folder}"
 CSV_DIR="${2:-/home/marcolee/files/badminton/tsad/EDA/processed_skeleton/sub1}"
+FRAME_START="${3:-0}"
+FRAME_END="${4:-}"
 
 FPS="${FPS:-10}"
 MP4_ELEV="${MP4_ELEV:-51.749}"
@@ -79,11 +81,16 @@ for sample_dir in "${sample_dirs[@]}"; do
         --mesh_dir "$mesh_dir"
         --output_html "$output_html"
         --output_mp4 "$output_mp4"
+        --frame_start "$FRAME_START"
         --fps "$FPS"
         --mp4_elev "$MP4_ELEV"
         --mp4_azim "$MP4_AZIM"
         --mp4_roll "$MP4_ROLL"
     )
+
+    if [[ -n "$FRAME_END" ]]; then
+        args+=(--frame_end "$FRAME_END")
+    fi
 
     if [[ "$ROTATE_CCW" == "true" ]]; then
         args+=(--mp4_rotate_ccw)

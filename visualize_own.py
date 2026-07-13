@@ -152,12 +152,31 @@ def write_mp4(meshes, output_mp4, fps, elev, azim, roll, show_edges, rotate_ccw,
     print(f'Wrote {output_mp4}')
 
 
+def validate_frame_range(frame_start, frame_end, num_frames):
+    if frame_start < 0:
+        raise ValueError(f'frame_start must be >= 0. Got {frame_start}.')
+    if frame_end is None:
+        frame_end = num_frames
+    if frame_end < frame_start:
+        raise ValueError(
+            f'frame_end must be >= frame_start. Got {frame_start}, {frame_end}.'
+        )
+    frame_end = min(frame_end, num_frames)
+    if frame_start >= frame_end:
+        raise ValueError(
+            f'Empty frame range [{frame_start}, {frame_end}) for {num_frames} frames.'
+        )
+    return frame_start, frame_end
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--skeleton_csv', required=True)
     parser.add_argument('--mesh_dir', required=True)
     parser.add_argument('--output_html', default='own_skeleton_smplx.html')
     parser.add_argument('--output_mp4', default=None)
+    parser.add_argument('--frame_start', type=int, default=0)
+    parser.add_argument('--frame_end', type=int, default=None)
     parser.add_argument('--fps', type=int, default=12)
     parser.add_argument('--mp4_elev', type=float, default=100.0)
     parser.add_argument('--mp4_azim', type=float, default=-90.0)
@@ -185,12 +204,21 @@ def main():
     num_frames = min(len(skeletons), len(meshes))
     if num_frames == 0:
         raise ValueError('No overlapping skeleton frames and meshes to visualize')
+    frame_start, frame_end = validate_frame_range(
+        args.frame_start,
+        args.frame_end,
+        num_frames,
+    )
+    skeletons = skeletons[frame_start:frame_end]
+    meshes = meshes[frame_start:frame_end]
+    num_frames = frame_end - frame_start
+    print(f'Visualizing frame range [{frame_start}, {frame_end})')
 
     frames = []
     for idx in range(num_frames):
         frames.append(go.Frame(
             data=[build_mesh(meshes[idx])] + build_skeleton(skeletons[idx]),
-            name=str(idx),
+            name=str(frame_start + idx),
         ))
 
     fig = go.Figure(
@@ -223,7 +251,7 @@ def main():
                         method='animate',
                         args=[[str(idx)], {'mode': 'immediate',
                                            'frame': {'duration': 0, 'redraw': True}}],
-                        label=str(idx),
+                        label=str(frame_start + idx),
                     )
                     for idx in range(num_frames)
                 ],
@@ -235,7 +263,7 @@ def main():
 
     if args.output_mp4:
         write_mp4(
-            meshes[:num_frames],
+            meshes,
             args.output_mp4,
             args.fps,
             args.mp4_elev,
