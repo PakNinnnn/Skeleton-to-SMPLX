@@ -136,12 +136,12 @@ def add_frame_label(frame, label):
     pad_y = max(14, image.height // 70)
     x = (image.width - text_w) // 2
     y = max(22, image.height // 35)
-    draw.rectangle(
-        [x - pad_x, y - pad_y, x + text_w + pad_x, y + text_h + pad_y],
-        fill=(255, 255, 255),
-        outline=fill_color,
-        width=max(3, image.width // 300),
-    )
+    # draw.rectangle(
+    #     [x - pad_x, y - pad_y, x + text_w + pad_x, y + text_h + pad_y],
+    #     fill=(255, 255, 255),
+    #     outline=fill_color,
+    #     width=max(3, image.width // 300),
+    # )
     draw.text((x, y), title, fill=fill_color, font=font)
     return np.asarray(image)
 
