@@ -5,6 +5,7 @@ OUTPUT_DIR="${1:-output_folder}"
 CSV_DIR="${2:-/home/marcolee/files/badminton/tsad/EDA/processed_skeleton/sub1}"
 FRAME_START="${3:-0}"
 FRAME_END="${4:-}"
+MP4_LABEL="${5:-}"
 
 FPS="${FPS:-10}"
 MP4_ELEV="${MP4_ELEV:-51.749}"
@@ -92,6 +93,10 @@ for sample_dir in "${sample_dirs[@]}"; do
         --mp4_azim "$MP4_AZIM"
         --mp4_roll "$MP4_ROLL"
     )
+
+    if [[ -n "$MP4_LABEL" ]]; then
+        args+=(--mp4_label "$MP4_LABEL")
+    fi
 
     if [[ -n "$FRAME_END" ]]; then
         args+=(--frame_end "$FRAME_END")
